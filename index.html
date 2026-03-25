@@ -300,31 +300,56 @@ function deselectAll() { checked.clear(); renderShuffleMembers(); }
 function updateCount() {
   const n = checked.size;
   document.getElementById('count').textContent = n;
-  document.getElementById('btn-shuffle').disabled = n < 2;
+  document.getElementById('btn-shuffle').disabled = n < 3;
+}
+
+function makeGroups(shuffled) {
+  const n = shuffled.length;
+  if (n < 3) return [shuffled]; // fallback
+  // All groups must be 3+. Use groups of 3 and 4.
+  // n=3→[3], n=4→[4], n=5→[5], n=6→[3,3], n=7→[4,3], n=8→[4,4], n=9→[3,3,3], n=10→[4,3,3]
+  let numGroups = Math.floor(n / 3);
+  // If remainder is 1, we'd get a solo leftover → reduce groups by 1, distribute as 4s
+  // If remainder is 2, we'd get a pair → reduce groups by 1, distribute
+  let sizes = [];
+  if (n % 3 === 0) {
+    sizes = Array(numGroups).fill(3);
+  } else if (n % 3 === 1) {
+    // e.g. 7→[4,3], 10→[4,3,3]
+    sizes = Array(numGroups - 1).fill(3);
+    sizes.unshift(4); // one group of 4
+    // Wait: 4 = 3+1, so we absorbed the extra 1
+    // Actually for n%3===1: numGroups groups of 3 leaves 1 extra
+    // Take one from a group of 3 → that group becomes 4, extra absorbed
+    sizes = Array(numGroups).fill(3);
+    sizes[0] = 4;
+  } else {
+    // n%3===2: e.g. 5→[5], 8→[4,4]
+    if (numGroups === 1) {
+      sizes = [n]; // just one group
+    } else {
+      // distribute: two groups get +1
+      sizes = Array(numGroups).fill(3);
+      sizes[0] = 4;
+      sizes[1] = 4;
+      // Hmm, that adds 2 extra but we only have 2 extra. 
+      // numGroups*3 + 2 = n, so numGroups groups of 3 + 2 extra
+      // Give 2 groups one extra each
+      // Wait, numGroups = floor(n/3). For n=5, numGroups=1, handled above.
+      // For n=8, numGroups=2, sizes=[4,4] → 8 ✓
+      // For n=11, numGroups=3, sizes=[4,4,3] → 11 ✓
+    }
+  }
+  let idx = 0;
+  return sizes.map(s => { const g = shuffled.slice(idx, idx + s); idx += s; return g; });
 }
 
 function doShuffle() {
   const participants = MEMBERS.filter(m => checked.has(m));
   const shuffled = [...participants].sort(() => Math.random() - 0.5);
   const n = shuffled.length;
-  let groups = [];
-  if (n <= 1) return;
-  if (n === 2) { groups = [shuffled]; }
-  else if (n === 4) { groups = [shuffled.slice(0,2), shuffled.slice(2,4)]; }
-  else if (n === 5) { groups = [shuffled.slice(0,3), shuffled.slice(3,5)]; }
-  else {
-    let numGroups = Math.floor(n / 3);
-    let remainder = n % 3;
-    let sizes = Array(numGroups).fill(3);
-    if (remainder === 1 && numGroups >= 1) {
-      sizes[sizes.length - 1] = 2;
-      sizes.push(2);
-    } else if (remainder === 2) {
-      sizes.push(2);
-    }
-    let idx = 0;
-    groups = sizes.map(s => { const g = shuffled.slice(idx, idx + s); idx += s; return g; });
-  }
+  if (n < 3) return;
+  const groups = makeGroups(shuffled);
 
   const container = document.getElementById('shuffle-results');
   container.innerHTML = `
@@ -388,7 +413,7 @@ function doConnectShuffle() {
   const fixedMembers = new Set();
   connectGroups.forEach(g => g.members.forEach(m => fixedMembers.add(m)));
 
-  // Remaining members get shuffled into groups of 3 (no solo)
+  // Remaining members get shuffled into groups of 3+ (never less than 3)
   const remaining = MEMBERS.filter(m => !fixedMembers.has(m));
   const shuffled = [...remaining].sort(() => Math.random() - 0.5);
   const n = shuffled.length;
@@ -396,33 +421,20 @@ function doConnectShuffle() {
 
   if (n === 0) {
     // no remaining
-  } else if (n === 1) {
-    // Add to smallest fixed group to avoid solo
-    let smallest = connectGroups.reduce((a, b) => a.members.size <= b.members.size ? a : b);
-    shuffleGroups = [{ label: smallest.name + '（＋1）', members: [shuffled[0]] }];
-  } else if (n === 2) {
-    shuffleGroups = [{ label: 'シャッフル A', members: shuffled }];
-  } else if (n === 4) {
-    shuffleGroups = [
-      { label: 'シャッフル A', members: shuffled.slice(0, 2) },
-      { label: 'シャッフル B', members: shuffled.slice(2, 4) },
-    ];
-  } else if (n === 5) {
-    shuffleGroups = [
-      { label: 'シャッフル A', members: shuffled.slice(0, 3) },
-      { label: 'シャッフル B', members: shuffled.slice(3, 5) },
-    ];
+  } else if (n === 1 || n === 2) {
+    // Too few for a group of 3 → merge into the smallest fixed group
+    // They'll join that group's lunch
+    let smallest = connectGroups.filter(g => g.members.size > 0)
+      .reduce((a, b) => a.members.size <= b.members.size ? a : b, connectGroups[0]);
+    shuffleGroups = [{ label: smallest.name + ' に合流', members: shuffled, merged: true }];
   } else {
-    let numG = Math.floor(n / 3);
-    let rem = n % 3;
-    let sizes = Array(numG).fill(3);
-    if (rem === 1 && numG >= 1) { sizes[sizes.length - 1] = 2; sizes.push(2); }
-    else if (rem === 2) { sizes.push(2); }
-    let idx = 0;
-    shuffleGroups = sizes.map((s, i) => {
-      const g = shuffled.slice(idx, idx + s);
-      idx += s;
-      return { label: `シャッフル ${String.fromCharCode(65 + i)}`, members: g };
+    // Use shared makeGroups logic (all 3+)
+    const groups = makeGroups(shuffled);
+    shuffleGroups = groups.map((g, i) => ({
+      label: `シャッフル ${String.fromCharCode(65 + i)}`,
+      members: g
+    }));
+  }
     });
   }
 
