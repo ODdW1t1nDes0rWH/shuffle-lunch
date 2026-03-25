@@ -135,6 +135,8 @@ body{
 .connect-group:nth-child(1){background:var(--orange-soft);}
 .connect-group:nth-child(2){background:var(--green-soft);}
 .connect-group:nth-child(3){background:var(--blue-soft);}
+.connect-group:nth-child(4){background:var(--plum-soft);}
+.connect-group:nth-child(5){background:var(--rose-soft);}
 .connect-group-name{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 .connect-group-name input{
   border:none;background:transparent;font-size:13px;font-weight:700;
@@ -152,6 +154,8 @@ body{
 .connect-group:nth-child(1) .connect-tag.assigned{border-color:var(--orange);background:rgba(255,255,255,.9);}
 .connect-group:nth-child(2) .connect-tag.assigned{border-color:var(--green);background:rgba(255,255,255,.9);}
 .connect-group:nth-child(3) .connect-tag.assigned{border-color:var(--blue);background:rgba(255,255,255,.9);}
+.connect-group:nth-child(4) .connect-tag.assigned{border-color:var(--plum);background:rgba(255,255,255,.9);}
+.connect-group:nth-child(5) .connect-tag.assigned{border-color:var(--rose);background:rgba(255,255,255,.9);}
 .connect-note{font-size:12px;color:var(--text-sub);text-align:center;margin-top:8px;}
 
 .all-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
@@ -227,11 +231,12 @@ body{
 
   <div id="panel-connect" class="panel">
     <div class="card">
-      <div class="card-label">つながりグループの設定</div>
+      <div class="card-label">🔒 固定グループ（同じ分野のメンバー）</div>
       <div id="connect-groups"></div>
       <div class="connect-note">名前をタップしてグループに追加・削除</div>
     </div>
-    <button class="btn-copy" onclick="copyConnect()">📋 Slackにコピー</button>
+    <button class="btn-shuffle" style="background:var(--green);box-shadow:0 4px 16px rgba(91,166,114,0.35);" onclick="doConnectShuffle()">🔗 つながりランチを生成！</button>
+    <div class="results" id="connect-results"></div>
   </div>
 
   <div id="panel-all" class="panel">
@@ -260,9 +265,7 @@ const MEMBERS = ['Aさん','Bさん','Cさん','Dさん','Eさん','Fさん','G�
 const checked = new Set(MEMBERS);
 
 let connectGroups = [
-  { name: '○○大学グループ', members: new Set(['Aさん','Bさん','Cさん']) },
-  { name: '△△大学グループ', members: new Set(['Dさん','Eさん','Fさん','Gさん']) },
-  { name: '□□大学グループ', members: new Set(['Hさん','Iさん','Jさん']) },
+  { name: '経済・経営グループ', members: new Set(['Aさん','Bさん','Cさん']) },
 ];
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -351,7 +354,7 @@ function renderConnect() {
   container.innerHTML = connectGroups.map((g, gi) => `
     <div class="connect-group">
       <div class="connect-group-name">
-        <span>${['🍊','🌿','🫐'][gi] || '📌'}</span>
+        <span>${['💰','🔢','🧬','🌍','📌'][gi] || '📌'}</span>
         <input value="${g.name}" onchange="connectGroups[${gi}].name=this.value" />
       </div>
       <div class="connect-members">
@@ -361,7 +364,16 @@ function renderConnect() {
         `).join('')}
       </div>
     </div>
-  `).join('');
+  `).join('') + `
+    <button class="select-actions" style="margin-top:12px;">
+      <button onclick="addConnectGroup()" style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text-sub);cursor:pointer;font-family:'Zen Maru Gothic',sans-serif;">＋ グループを追加</button>
+    </button>
+  `;
+}
+
+function addConnectGroup() {
+  connectGroups.push({ name: '新しいグループ', members: new Set() });
+  renderConnect();
 }
 
 function toggleConnect(gi, name) {
@@ -371,11 +383,78 @@ function toggleConnect(gi, name) {
   renderConnect();
 }
 
-function copyConnect() {
-  let text = '🔗 今週のつながりランチ\n';
+function doConnectShuffle() {
+  // Collect fixed group members
+  const fixedMembers = new Set();
+  connectGroups.forEach(g => g.members.forEach(m => fixedMembers.add(m)));
+
+  // Remaining members get shuffled into groups of 3 (no solo)
+  const remaining = MEMBERS.filter(m => !fixedMembers.has(m));
+  const shuffled = [...remaining].sort(() => Math.random() - 0.5);
+  const n = shuffled.length;
+  let shuffleGroups = [];
+
+  if (n === 0) {
+    // no remaining
+  } else if (n === 1) {
+    // Add to smallest fixed group to avoid solo
+    let smallest = connectGroups.reduce((a, b) => a.members.size <= b.members.size ? a : b);
+    shuffleGroups = [{ label: smallest.name + '（＋1）', members: [shuffled[0]] }];
+  } else if (n === 2) {
+    shuffleGroups = [{ label: 'シャッフル A', members: shuffled }];
+  } else if (n === 4) {
+    shuffleGroups = [
+      { label: 'シャッフル A', members: shuffled.slice(0, 2) },
+      { label: 'シャッフル B', members: shuffled.slice(2, 4) },
+    ];
+  } else if (n === 5) {
+    shuffleGroups = [
+      { label: 'シャッフル A', members: shuffled.slice(0, 3) },
+      { label: 'シャッフル B', members: shuffled.slice(3, 5) },
+    ];
+  } else {
+    let numG = Math.floor(n / 3);
+    let rem = n % 3;
+    let sizes = Array(numG).fill(3);
+    if (rem === 1 && numG >= 1) { sizes[sizes.length - 1] = 2; sizes.push(2); }
+    else if (rem === 2) { sizes.push(2); }
+    let idx = 0;
+    shuffleGroups = sizes.map((s, i) => {
+      const g = shuffled.slice(idx, idx + s);
+      idx += s;
+      return { label: `シャッフル ${String.fromCharCode(65 + i)}`, members: g };
+    });
+  }
+
+  // Build all result cards: fixed groups first, then shuffle groups
+  const allGroups = [];
   connectGroups.forEach(g => {
-    if (g.members.size === 0) return;
-    text += `\n${g.name}: ${[...g.members].join('、')}`;
+    if (g.members.size > 0) allGroups.push({ label: '🔒 ' + g.name, members: [...g.members] });
+  });
+  shuffleGroups.forEach(g => {
+    allGroups.push({ label: '🎲 ' + g.label, members: g.members });
+  });
+
+  const container = document.getElementById('connect-results');
+  container.innerHTML = `
+    <div class="results-title">🔗 今週のつながりランチ</div>
+    ${allGroups.map((g, i) => `
+      <div class="group-card">
+        <div class="group-label">${g.label}</div>
+        <div class="group-members">${g.members.map(m => `<span class="group-tag">${m}</span>`).join('')}</div>
+      </div>
+    `).join('')}
+    <button class="btn-copy" onclick="copyConnectResult()">📋 Slackにコピー</button>
+  `;
+}
+
+function copyConnectResult() {
+  const cards = document.querySelectorAll('#connect-results .group-card');
+  let text = '🔗 今週のつながりランチ\n';
+  cards.forEach(c => {
+    const label = c.querySelector('.group-label').textContent;
+    const names = [...c.querySelectorAll('.group-tag')].map(t => t.textContent).join('、');
+    text += `\n${label}: ${names}`;
   });
   copyToClipboard(text, event.target);
 }
