@@ -261,11 +261,11 @@ body{
 </div>
 
 <script>
-const MEMBERS = ['Aさん','Bさん','Cさん','Dさん','Eさん','Fさん','Gさん','Hさん','Iさん','Jさん'];
+const MEMBERS = ['富さん','杉さん','大さん','飽さん','持さん','古さん','肥さん','章さん','藍さん','齊さん'];
 const checked = new Set(MEMBERS);
 
 let connectGroups = [
-  { name: '経済・経営グループ', members: new Set(['Aさん','Bさん','Cさん']) },
+  { name: '経済・経営グループ', members: new Set(['富さん','杉さん','大さん']) },
 ];
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -434,8 +434,6 @@ function doConnectShuffle() {
       label: `シャッフル ${String.fromCharCode(65 + i)}`,
       members: g
     }));
-  }
-    });
   }
 
   // Build all result cards: fixed groups first, then shuffle groups
