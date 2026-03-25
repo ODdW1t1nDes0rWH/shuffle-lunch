@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シャッフルランチ</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #FBF8F3;
+  --card: #FFFFFF;
+  --text: #3D3529;
+  --text-sub: #9B9384;
+  --orange: #E46B2C;
+  --orange-soft: #FEF0E8;
+  --orange-dark: #C85A20;
+  --green: #5BA672;
+  --green-soft: #EAF6EE;
+  --blue: #5288C9;
+  --blue-soft: #EBF2FA;
+  --plum: #A76DAF;
+  --plum-soft: #F5ECF6;
+  --rose: #D46B7C;
+  --rose-soft: #FCEEF0;
+  --border: #ECE7DF;
+  --radius: 16px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Zen Maru Gothic',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding:20px 16px 80px;
+  background-image:
+    radial-gradient(circle at 15% 10%, rgba(228,107,44,0.06) 0%, transparent 50%),
+    radial-gradient(circle at 85% 90%, rgba(91,166,114,0.06) 0%, transparent 50%);
+}
+.container{max-width:580px;margin:0 auto;}
+
+.header{text-align:center;padding:24px 0 28px;}
+.header-icon{font-size:52px;display:block;margin-bottom:4px;animation:wiggle 3s ease-in-out infinite;}
+@keyframes wiggle{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-6deg)}75%{transform:rotate(6deg)}}
+.header h1{font-family:'Outfit',sans-serif;font-weight:900;font-size:26px;letter-spacing:-0.5px;}
+.header p{color:var(--text-sub);font-size:13px;margin-top:4px;font-weight:500;}
+
+.tabs{display:flex;gap:3px;background:var(--card);border-radius:14px;padding:4px;margin-bottom:24px;border:1px solid var(--border);box-shadow:var(--shadow);}
+.tab{
+  flex:1;padding:11px 6px;text-align:center;border-radius:11px;
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .25s;
+  border:none;background:transparent;color:var(--text-sub);
+  font-family:'Zen Maru Gothic',sans-serif;
+}
+.tab:hover{background:var(--bg);}
+.tab.active{color:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
+.tab[data-tab="shuffle"].active{background:var(--orange);}
+.tab[data-tab="connect"].active{background:var(--green);}
+.tab[data-tab="all"].active{background:var(--blue);}
+.tab[data-tab="calendar"].active{background:var(--plum);}
+
+.panel{display:none;}
+.panel.active{display:block;}
+
+.card{background:var(--card);border-radius:var(--radius);padding:22px;margin-bottom:16px;border:1px solid var(--border);box-shadow:var(--shadow);}
+.card-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-sub);margin-bottom:14px;}
+
+.members-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
+.member-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:10px;cursor:pointer;transition:all .2s;
+  border:2px solid transparent;user-select:none;
+}
+.member-item:hover{background:var(--bg);}
+.member-item.checked{background:var(--orange-soft);border-color:var(--orange);}
+.m-check{
+  width:22px;height:22px;border-radius:7px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .2s;font-size:12px;color:transparent;
+}
+.member-item.checked .m-check{background:var(--orange);border-color:var(--orange);color:#fff;}
+.m-name{font-weight:600;font-size:14px;}
+.select-actions{display:flex;gap:8px;margin-top:10px;}
+.select-actions button{
+  font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;
+  border:1px solid var(--border);background:var(--bg);color:var(--text-sub);
+  cursor:pointer;font-family:'Zen Maru Gothic',sans-serif;transition:all .2s;
+}
+.select-actions button:hover{background:#EDE8E0;}
+.member-status{text-align:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;color:var(--text-sub);}
+.member-status strong{color:var(--orange);font-size:22px;vertical-align:-2px;}
+
+.btn-shuffle{
+  width:100%;padding:16px;border-radius:14px;border:none;
+  font-size:16px;font-weight:900;cursor:pointer;
+  font-family:'Zen Maru Gothic',sans-serif;transition:all .2s;
+  background:var(--orange);color:#fff;
+  box-shadow:0 4px 16px rgba(228,107,44,0.35);
+}
+.btn-shuffle:hover{background:var(--orange-dark);}
+.btn-shuffle:active{transform:scale(0.97);}
+.btn-shuffle:disabled{background:var(--border);color:var(--text-sub);box-shadow:none;cursor:not-allowed;}
+
+.results{margin-top:20px;}
+.results-title{font-size:16px;font-weight:900;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.group-card{
+  border-radius:14px;padding:16px 18px;margin-bottom:10px;
+  animation:pop .35s cubic-bezier(.34,1.56,.64,1) both;
+  border-left:4px solid;
+}
+.group-card:nth-child(1){background:var(--orange-soft);border-color:var(--orange);animation-delay:0s;}
+.group-card:nth-child(2){background:var(--green-soft);border-color:var(--green);animation-delay:.07s;}
+.group-card:nth-child(3){background:var(--blue-soft);border-color:var(--blue);animation-delay:.14s;}
+.group-card:nth-child(4){background:var(--plum-soft);border-color:var(--plum);animation-delay:.21s;}
+.group-card:nth-child(5){background:var(--rose-soft);border-color:var(--rose);animation-delay:.28s;}
+@keyframes pop{from{opacity:0;transform:translateY(12px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+.group-label{font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:8px;}
+.group-card:nth-child(1) .group-label{color:var(--orange);}
+.group-card:nth-child(2) .group-label{color:var(--green);}
+.group-card:nth-child(3) .group-label{color:var(--blue);}
+.group-card:nth-child(4) .group-label{color:var(--plum);}
+.group-card:nth-child(5) .group-label{color:var(--rose);}
+.group-members{display:flex;flex-wrap:wrap;gap:8px;}
+.group-tag{background:rgba(255,255,255,.75);padding:6px 14px;border-radius:8px;font-weight:700;font-size:14px;}
+
+.btn-copy{
+  width:100%;margin-top:12px;padding:12px;border-radius:12px;
+  border:1px solid var(--border);background:var(--card);
+  font-size:14px;font-weight:700;color:var(--text);cursor:pointer;
+  font-family:'Zen Maru Gothic',sans-serif;transition:all .2s;
+}
+.btn-copy:hover{background:var(--bg);}
+
+.connect-group{border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.connect-group:nth-child(1){background:var(--orange-soft);}
+.connect-group:nth-child(2){background:var(--green-soft);}
+.connect-group:nth-child(3){background:var(--blue-soft);}
+.connect-group-name{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.connect-group-name input{
+  border:none;background:transparent;font-size:13px;font-weight:700;
+  font-family:'Zen Maru Gothic',sans-serif;color:var(--text);width:140px;
+  border-bottom:1.5px dashed var(--border);padding:2px 0;
+}
+.connect-group-name input:focus{outline:none;border-color:var(--text-sub);}
+.connect-members{display:flex;flex-wrap:wrap;gap:6px;}
+.connect-tag{
+  padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .2s;border:1.5px dashed var(--border);
+  background:rgba(255,255,255,.5);color:var(--text-sub);user-select:none;
+}
+.connect-tag.assigned{border-style:solid;color:var(--text);background:rgba(255,255,255,.85);}
+.connect-group:nth-child(1) .connect-tag.assigned{border-color:var(--orange);background:rgba(255,255,255,.9);}
+.connect-group:nth-child(2) .connect-tag.assigned{border-color:var(--green);background:rgba(255,255,255,.9);}
+.connect-group:nth-child(3) .connect-tag.assigned{border-color:var(--blue);background:rgba(255,255,255,.9);}
+.connect-note{font-size:12px;color:var(--text-sub);text-align:center;margin-top:8px;}
+
+.all-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.all-member{
+  padding:14px;border-radius:12px;text-align:center;
+  font-weight:700;font-size:15px;background:var(--card);
+  border:1px solid var(--border);
+  animation:pop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+.all-member:nth-child(1){animation-delay:0s;}
+.all-member:nth-child(2){animation-delay:.03s;}
+.all-member:nth-child(3){animation-delay:.06s;}
+.all-member:nth-child(4){animation-delay:.09s;}
+.all-member:nth-child(5){animation-delay:.12s;}
+.all-member:nth-child(6){animation-delay:.15s;}
+.all-member:nth-child(7){animation-delay:.18s;}
+.all-member:nth-child(8){animation-delay:.21s;}
+.all-member:nth-child(9){animation-delay:.24s;}
+.all-member:nth-child(10){animation-delay:.27s;}
+
+.cal-month{font-size:18px;font-weight:900;text-align:center;margin-bottom:16px;}
+.cal-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.cal-week{
+  border-radius:12px;padding:16px 12px;text-align:center;
+  border:1px solid var(--border);background:var(--card);
+  animation:pop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+.cal-week:nth-child(1){animation-delay:0s;}
+.cal-week:nth-child(2){animation-delay:.06s;}
+.cal-week:nth-child(3){animation-delay:.12s;}
+.cal-week:nth-child(4){animation-delay:.18s;}
+.cal-week-num{font-size:11px;font-weight:700;color:var(--text-sub);letter-spacing:1px;margin-bottom:6px;}
+.cal-week-type{font-size:28px;margin-bottom:6px;}
+.cal-week-label{font-size:12px;font-weight:700;}
+.cal-week[data-type="shuffle"] .cal-week-label{color:var(--orange);}
+.cal-week[data-type="connect"] .cal-week-label{color:var(--green);}
+.cal-week[data-type="all"] .cal-week-label{color:var(--blue);}
+
+@media(max-width:400px){
+  .members-grid{grid-template-columns:1fr;}
+  .cal-grid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="header-icon">🍱</span>
+    <h1>Shuffle Lunch</h1>
+    <p>毎週のランチをもっと楽しく</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="shuffle">🎲 シャッフル</button>
+    <button class="tab" data-tab="connect">🔗 つながり</button>
+    <button class="tab" data-tab="all">👥 全員</button>
+    <button class="tab" data-tab="calendar">📅 月間</button>
+  </div>
+
+  <div id="panel-shuffle" class="panel active">
+    <div class="card">
+      <div class="card-label">今週の参加者を選択</div>
+      <div class="members-grid" id="shuffle-members"></div>
+      <div class="select-actions">
+        <button onclick="selectAll()">全員選択</button>
+        <button onclick="deselectAll()">全員解除</button>
+      </div>
+      <div class="member-status">参加者 <strong id="count">0</strong> / 10 人</div>
+    </div>
+    <button class="btn-shuffle" id="btn-shuffle" disabled onclick="doShuffle()">🎲 シャッフルする！</button>
+    <div class="results" id="shuffle-results"></div>
+  </div>
+
+  <div id="panel-connect" class="panel">
+    <div class="card">
+      <div class="card-label">つながりグループの設定</div>
+      <div id="connect-groups"></div>
+      <div class="connect-note">名前をタップしてグループに追加・削除</div>
+    </div>
+    <button class="btn-copy" onclick="copyConnect()">📋 Slackにコピー</button>
+  </div>
+
+  <div id="panel-all" class="panel">
+    <div class="card">
+      <div class="card-label">全員ランチ 🎉</div>
+      <div class="all-grid" id="all-grid"></div>
+    </div>
+    <button class="btn-copy" onclick="copyAll()">📋 Slackにコピー</button>
+  </div>
+
+  <div id="panel-calendar" class="panel">
+    <div class="card">
+      <div class="cal-month" id="cal-month"></div>
+      <div class="cal-grid">
+        <div class="cal-week" data-type="connect"><div class="cal-week-num">第1週</div><div class="cal-week-type">🔗</div><div class="cal-week-label">つながり</div></div>
+        <div class="cal-week" data-type="shuffle"><div class="cal-week-num">第2週</div><div class="cal-week-type">🎲</div><div class="cal-week-label">シャッフル</div></div>
+        <div class="cal-week" data-type="shuffle"><div class="cal-week-num">第3週</div><div class="cal-week-type">🎲</div><div class="cal-week-label">シャッフル</div></div>
+        <div class="cal-week" data-type="all"><div class="cal-week-num">第4週</div><div class="cal-week-type">👥</div><div class="cal-week-label">全員</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const MEMBERS = ['Aさん','Bさん','Cさん','Dさん','Eさん','Fさん','Gさん','Hさん','Iさん','Jさん'];
+const checked = new Set(MEMBERS);
+
+let connectGroups = [
+  { name: '○○大学グループ', members: new Set(['Aさん','Bさん','Cさん']) },
+  { name: '△△大学グループ', members: new Set(['Dさん','Eさん','Fさん','Gさん']) },
+  { name: '□□大学グループ', members: new Set(['Hさん','Iさん','Jさん']) },
+];
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'connect') renderConnect();
+    if (tab.dataset.tab === 'all') renderAll();
+  });
+});
+
+function renderShuffleMembers() {
+  const grid = document.getElementById('shuffle-members');
+  grid.innerHTML = MEMBERS.map(m => `
+    <div class="member-item ${checked.has(m)?'checked':''}" onclick="toggleMember('${m}')">
+      <div class="m-check">✓</div>
+      <div class="m-name">${m}</div>
+    </div>
+  `).join('');
+  updateCount();
+}
+
+function toggleMember(name) {
+  if (checked.has(name)) checked.delete(name); else checked.add(name);
+  renderShuffleMembers();
+}
+function selectAll() { MEMBERS.forEach(m => checked.add(m)); renderShuffleMembers(); }
+function deselectAll() { checked.clear(); renderShuffleMembers(); }
+
+function updateCount() {
+  const n = checked.size;
+  document.getElementById('count').textContent = n;
+  document.getElementById('btn-shuffle').disabled = n < 2;
+}
+
+function doShuffle() {
+  const participants = MEMBERS.filter(m => checked.has(m));
+  const shuffled = [...participants].sort(() => Math.random() - 0.5);
+  const n = shuffled.length;
+  let groups = [];
+  if (n <= 1) return;
+  if (n === 2) { groups = [shuffled]; }
+  else if (n === 4) { groups = [shuffled.slice(0,2), shuffled.slice(2,4)]; }
+  else if (n === 5) { groups = [shuffled.slice(0,3), shuffled.slice(3,5)]; }
+  else {
+    let numGroups = Math.floor(n / 3);
+    let remainder = n % 3;
+    let sizes = Array(numGroups).fill(3);
+    if (remainder === 1 && numGroups >= 1) {
+      sizes[sizes.length - 1] = 2;
+      sizes.push(2);
+    } else if (remainder === 2) {
+      sizes.push(2);
+    }
+    let idx = 0;
+    groups = sizes.map(s => { const g = shuffled.slice(idx, idx + s); idx += s; return g; });
+  }
+
+  const container = document.getElementById('shuffle-results');
+  container.innerHTML = `
+    <div class="results-title">🎲 今週のグループ</div>
+    ${groups.map((g, i) => `
+      <div class="group-card">
+        <div class="group-label">GROUP ${String.fromCharCode(65 + i)}</div>
+        <div class="group-members">${g.map(m => `<span class="group-tag">${m}</span>`).join('')}</div>
+      </div>
+    `).join('')}
+    <button class="btn-copy" onclick="copyShuffle()">📋 Slackにコピー</button>
+  `;
+}
+
+function copyShuffle() {
+  const cards = document.querySelectorAll('#shuffle-results .group-card');
+  let text = '🍱 今週のシャッフルランチ\n';
+  cards.forEach((c, i) => {
+    const names = [...c.querySelectorAll('.group-tag')].map(t => t.textContent).join('、');
+    text += `\nGroup ${String.fromCharCode(65 + i)}: ${names}`;
+  });
+  copyToClipboard(text, event.target);
+}
+
+function renderConnect() {
+  const container = document.getElementById('connect-groups');
+  container.innerHTML = connectGroups.map((g, gi) => `
+    <div class="connect-group">
+      <div class="connect-group-name">
+        <span>${['🍊','🌿','🫐'][gi] || '📌'}</span>
+        <input value="${g.name}" onchange="connectGroups[${gi}].name=this.value" />
+      </div>
+      <div class="connect-members">
+        ${MEMBERS.map(m => `
+          <span class="connect-tag ${g.members.has(m)?'assigned':''}"
+                onclick="toggleConnect(${gi},'${m}')">${m}</span>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleConnect(gi, name) {
+  connectGroups.forEach((g, i) => { if (i !== gi) g.members.delete(name); });
+  if (connectGroups[gi].members.has(name)) connectGroups[gi].members.delete(name);
+  else connectGroups[gi].members.add(name);
+  renderConnect();
+}
+
+function copyConnect() {
+  let text = '🔗 今週のつながりランチ\n';
+  connectGroups.forEach(g => {
+    if (g.members.size === 0) return;
+    text += `\n${g.name}: ${[...g.members].join('、')}`;
+  });
+  copyToClipboard(text, event.target);
+}
+
+function renderAll() {
+  document.getElementById('all-grid').innerHTML = MEMBERS.map(m =>
+    `<div class="all-member">${m}</div>`
+  ).join('');
+}
+
+function copyAll() {
+  copyToClipboard('👥 今週は全員ランチ！\n\n参加者: ' + MEMBERS.join('、'), event.target);
+}
+
+const now = new Date();
+document.getElementById('cal-month').textContent =
+  `${now.getFullYear()}年${now.getMonth() + 1}月のスケジュール`;
+
+function copyToClipboard(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '✅ コピーしました！';
+      setTimeout(() => btn.textContent = orig, 1500);
+    }
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+}
+
+renderShuffleMembers();
+</script>
+</body>
+</html>
