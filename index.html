@@ -198,6 +198,36 @@ body{
   .members-grid{grid-template-columns:1fr;}
   .cal-grid{grid-template-columns:repeat(2,1fr);}
 }
+
+.guest-area{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+.guest-label{font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;}
+.guest-input-row{display:flex;gap:6px;}
+.guest-input{
+  flex:1;padding:9px 12px;border-radius:8px;border:1.5px solid var(--border);
+  font-size:14px;font-family:'Zen Maru Gothic',sans-serif;color:var(--text);
+  background:var(--bg);outline:none;transition:border-color .2s;
+}
+.guest-input:focus{border-color:var(--orange);}
+.guest-input::placeholder{color:var(--text-sub);}
+.btn-add-guest{
+  padding:9px 16px;border-radius:8px;border:none;
+  background:var(--orange);color:#fff;font-weight:700;font-size:13px;
+  cursor:pointer;font-family:'Zen Maru Gothic',sans-serif;transition:all .2s;
+  white-space:nowrap;
+}
+.btn-add-guest:hover{background:var(--orange-dark);}
+.btn-add-guest:active{transform:scale(0.96);}
+.guest-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.guest-tag{
+  display:flex;align-items:center;gap:4px;
+  padding:5px 10px;border-radius:7px;font-size:13px;font-weight:600;
+  background:var(--plum-soft);color:var(--plum);border:1.5px solid var(--plum);
+}
+.guest-remove{
+  cursor:pointer;font-size:15px;line-height:1;margin-left:2px;
+  opacity:0.6;transition:opacity .2s;
+}
+.guest-remove:hover{opacity:1;}
 </style>
 </head>
 <body>
@@ -223,7 +253,15 @@ body{
         <button onclick="selectAll()">全員選択</button>
         <button onclick="deselectAll()">全員解除</button>
       </div>
-      <div class="member-status">参加者 <strong id="count">0</strong> / 10 人</div>
+      <div class="member-status">参加者 <strong id="count">0</strong> / <span id="total-count">10</span> 人</div>
+      <div class="guest-area">
+        <div class="guest-label">＋ ゲストを追加</div>
+        <div class="guest-input-row">
+          <input class="guest-input" id="guest-name" type="text" placeholder="名前を入力" onkeydown="if(event.key==='Enter')addGuest()" />
+          <button class="btn-add-guest" onclick="addGuest()">追加</button>
+        </div>
+        <div class="guest-tags" id="guest-tags"></div>
+      </div>
     </div>
     <button class="btn-shuffle" id="btn-shuffle" disabled onclick="doShuffle()">🎲 シャッフルする！</button>
     <div class="results" id="shuffle-results"></div>
@@ -262,7 +300,37 @@ body{
 
 <script>
 const MEMBERS = ['富さん','杉さん','大さん','飽さん','持さん','古さん','肥さん','章さん','藍さん','齊さん'];
+const guests = [];
 const checked = new Set(MEMBERS);
+
+function getAllMembers() { return [...MEMBERS, ...guests]; }
+
+function addGuest() {
+  const input = document.getElementById('guest-name');
+  const name = input.value.trim();
+  if (!name) return;
+  // Avoid duplicates
+  if (getAllMembers().includes(name)) { input.value = ''; return; }
+  guests.push(name);
+  checked.add(name);
+  input.value = '';
+  renderShuffleMembers();
+  renderGuestTags();
+}
+
+function removeGuest(name) {
+  const idx = guests.indexOf(name);
+  if (idx !== -1) guests.splice(idx, 1);
+  checked.delete(name);
+  renderShuffleMembers();
+  renderGuestTags();
+}
+
+function renderGuestTags() {
+  document.getElementById('guest-tags').innerHTML = guests.map(g => `
+    <span class="guest-tag">${g}<span class="guest-remove" onclick="removeGuest('${g}')">✕</span></span>
+  `).join('');
+}
 
 let connectGroups = [
   { name: '経済・経営グループ', members: new Set(['富さん','杉さん','大さん']) },
@@ -280,11 +348,12 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 function renderShuffleMembers() {
+  const all = getAllMembers();
   const grid = document.getElementById('shuffle-members');
-  grid.innerHTML = MEMBERS.map(m => `
+  grid.innerHTML = all.map(m => `
     <div class="member-item ${checked.has(m)?'checked':''}" onclick="toggleMember('${m}')">
       <div class="m-check">✓</div>
-      <div class="m-name">${m}</div>
+      <div class="m-name">${m}${guests.includes(m) ? ' 🏷' : ''}</div>
     </div>
   `).join('');
   updateCount();
@@ -294,12 +363,14 @@ function toggleMember(name) {
   if (checked.has(name)) checked.delete(name); else checked.add(name);
   renderShuffleMembers();
 }
-function selectAll() { MEMBERS.forEach(m => checked.add(m)); renderShuffleMembers(); }
+function selectAll() { getAllMembers().forEach(m => checked.add(m)); renderShuffleMembers(); }
 function deselectAll() { checked.clear(); renderShuffleMembers(); }
 
 function updateCount() {
-  const n = checked.size;
+  const all = getAllMembers();
+  const n = all.filter(m => checked.has(m)).length;
   document.getElementById('count').textContent = n;
+  document.getElementById('total-count').textContent = all.length;
   document.getElementById('btn-shuffle').disabled = n < 3;
 }
 
@@ -345,7 +416,7 @@ function makeGroups(shuffled) {
 }
 
 function doShuffle() {
-  const participants = MEMBERS.filter(m => checked.has(m));
+  const participants = getAllMembers().filter(m => checked.has(m));
   const shuffled = [...participants].sort(() => Math.random() - 0.5);
   const n = shuffled.length;
   if (n < 3) return;
